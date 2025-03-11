@@ -9,12 +9,15 @@ from wasabi import msg
 from tqdm import tqdm
 from torchvision import transforms
 import gc
+import subprocess
 
 def init_model(config):
     model = AutoModelForImageSegmentation.from_pretrained(config['model']['model'], trust_remote_code=True)
     # torch.set_float32_matmul_precision(['high', 'highest'][0])
     model.to('cuda')
     model.eval()
+    model.to(torch.bfloat16)
+
 
     image_size = tuple(config['model']['image_size'])
     transform_image = transforms.Compose([
@@ -56,15 +59,18 @@ def preprocess(frames, fps_old, fps_new, transform_image=None):
     frames = frames[::ratio]
     if transform_image:
         for i in range(len(frames)):
-            frames[i] = transform_image(frames[i]).unsqueeze(0).to('cuda')
+            frames[i] = transform_image(frames[i]).unsqueeze(0).to('cuda').to(torch.bfloat16)
     return frames
 
 def segment(frames, model, is_model=True):
     results = []
     if is_model:
-        frames = torch.cat(frames)
-        preds = model(frames)[-1].sigmoid().cpu()
-        return preds
+        batch = 1
+        for i in tqdm(range(0, len(frames), batch)):
+            preds = model(frames[i])[-1].sigmoid().cpu()
+            results.append(preds)
+            del preds
+        return results
     else:
         for frame in tqdm(frames):
             results.append(pipeline(frame))
@@ -115,6 +121,9 @@ def save_video(config, weight, height):
     del video
 
 def main(config_path):
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cuda.matmul.allow_tf32 = True  # Efficient matrix multiplies
+    subprocess.run("export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512")
 
     torch.cuda.empty_cache()
     gc.collect()
@@ -134,19 +143,22 @@ def main(config_path):
     # init model
     model, transform_image = init_model(config)
 
-
     frames, etc = get(config['input']["video_path"])
     frames = preprocess(frames, etc['fps'], config['output']['fps'], transform_image)
 
     msg.info("Segmentation Started...")
     with torch.no_grad():
         segments = segment(frames, model)
+        torch.cuda.empty_cache()
 
     frame_dir = os.path.join(config['output']['output_dir'], 'frames')
     config['output']['frame_dir'] = frame_dir
     if not os.path.exists(frame_dir):
         os.makedirs(frame_dir)
     save_frames(segments, frame_dir)
+
+    # delete big tensor
+    del segments
 
     config['output']['width'] = etc['width']
     config['output']['height'] = etc['height']
@@ -158,7 +170,5 @@ def main(config_path):
     msg.info("Video saved at", config['output']['output_path'])
     del model, frames
 
-main("shadow-play-segment/config.yaml")
-
-! export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-
+if __name__ == "__main__":
+    main("shadow-play-segment/config.yaml")
