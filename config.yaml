@@ -1,0 +1,6 @@
+
+input:
+  video_path: "path/to/video.mp4"
+output:
+  output_path: "path/to/output.mp4"
+  fps: 2
