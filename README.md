@@ -24,3 +24,6 @@ Now imagine a dice is placed between a light source that is turned off and a scr
 
 This program aims to achieve this goal by using image segmentation and masking.
 
+![Segmentation and Shadow Play](sample/output.gif)
+*Segmentation Result* 
+(*[See Original](https://pixabay.com/videos/dice-dice-game-the-game-11117/)*)
