@@ -1,8 +1,15 @@
 
-# model: "briaai/RMBG-2.0"
-model: "nvidia/segformer-b1-finetuned-cityscapes-1024-1024"
+model:
+  # model: "nvidia/segformer-b1-finetuned-cityscapes-1024-1024"
+  model: "briaai/RMBG-2.0"
+  image_size:
+    - 1024
+    - 1024
+  # Link: https://huggingface.co/briaai/RMBG-2.0
+  label: "dice"
+
 input:
-  video_path: "videos/raw/dice.mp4"
+  video_path: "/content/shadow-play-segment/videos/raw/dice.mp4"
 output:
-  output_dir: "videos/seg/"
+  output_dir: "/content/shadow-play-segment/videos/seg"
   fps: 2
