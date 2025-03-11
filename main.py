@@ -16,7 +16,7 @@ def init_model(config):
     # torch.set_float32_matmul_precision(['high', 'highest'][0])
     model.to('cuda')
     model.eval()
-    model.to(torch.bfloat16)
+    # model.to(torch.bfloat16)
 
 
     image_size = tuple(config['model']['image_size'])
@@ -60,7 +60,7 @@ def preprocess(frames, fps_old, fps_new, transform_image=None):
     if transform_image:
         for i in range(len(frames)):
             frames[i] = transform_image(frames[i]).unsqueeze(0).to('cuda')
-            frames[i] = frames[i].to(torch.bfloat16)
+            # frames[i] = frames[i].to(torch.bfloat16)
     frames = torch.stack(frames)
     return frames
 
@@ -103,20 +103,21 @@ def save_frames(preds, path, frames=None, is_model=True):
 def save_video(config, weight, height):
 
     frame_dir = config['output']['frame_dir']
+    print(os.listdir(frame_dir))
     filename = os.path.basename(config['input']['video_path'])
 
     # Make the frames of the masks into video
-    video = cv2.VideoWriter(os.path.join(config['output']['output_dir'], filename), cv2.VideoWriter_fourcc(*'mp4v'), config['output']['fps'], (weight, height))
+    video = cv2.VideoWriter(os.path.join(config['output']['output_dir'], filename), cv2.VideoWriter_fourcc(*'avc1'), config['output']['fps'], (weight, height))
 
     # target_label = config['model']['label']
 
-    for file in os.listdir(frame_dir).sort(key=lambda x: int(x.split('_')[1].split('.')[0])):
+    for file in sorted(os.listdir(frame_dir), key=lambda x: int(x.split('_')[1].split('.')[0])):
         # if target_label not in file:
         #     continue
         # else:
         #     img = Image.open(os.path.join(frame_dir, file)).convert('RGB')
         #     video.write(img)
-        img = Image.open(os.path.join(frame_dir, file)).convert('RGB')
+        img = cv2.imread(os.path.join(frame_dir, file))
         video.write(img)
 
     cv2.destroyAllWindows()
@@ -148,8 +149,7 @@ def main(config_path):
 
     frames, etc = get(config['input']["video_path"])
     tensors = preprocess(frames, etc['fps'], config['output']['fps'], transform_image)
-    print(frames[0].dtype)
-
+    
     msg.info("Segmentation Started...")
     with torch.no_grad():
         segments = segment(tensors, model)
@@ -164,16 +164,15 @@ def main(config_path):
     # delete big tensor
     del segments
 
-    config['output']['width'] = etc['width']
-    config['output']['height'] = etc['height']
+    config['output']['width'] = int(etc['width'])
+    config['output']['height'] = int(etc['height'])
 
-    with open(os.path.join(output_dir, 'config.yaml'), 'w') as f:
+    with open(os.path.join(config['output']['output_dir'], 'config.yaml'), 'w') as f:
         yaml.dump(config, f)
     del model, frames
         
-    save_video(config, etc['width'], etc['height'])
+    save_video(config, int(etc['width']), int(etc['height']))
     msg.info("Video saved at", config['output']['output_dir'])
-    return config, etc
 
 if __name__ == "__main__":
-    main("shadow-play-segment/config.yaml")
+    main("config.yaml")

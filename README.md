@@ -23,3 +23,4 @@ Imagine you are staring at a picture of a dice. Your innate ability allows you t
 Now imagine a dice is placed between a light source that is turned off and a screen in the shadow play setting, without knowing what object is being placed. Then the light source is turned on, and from the audience side you see a black 2D projection in the shape of a trapezium. Now confronted with a uniformly colored figure, with no gradient of light or cube points on the shape, you are momentarily confused as to what the object really is. You might immediately figure out that it is a cube, or at least a cubic 3D object, but this temporary inability to reconstruct the representation is what this project wants you to experience (it is ironic to say "*experience an experience*", but this is just a double process of *experiencing a psuedo experience* in phenomenological understanding).
 
 This program aims to achieve this goal by using image segmentation and masking.
+
