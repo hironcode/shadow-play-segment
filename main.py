@@ -2,6 +2,7 @@ from transformers import pipeline
 from PIL import Image
 import cv2
 import yaml
+import torch
 import os
 
 def get(video_path):
@@ -40,24 +41,31 @@ def segment(frames, pipeline):
     return results
 
 def connect_save(results, config, weight, height):
-    # Connect the segments
-    masks = [results[i]['mask'] for i in range(len(results))]
+
     # Make the frames of the masks into video
-    video = cv2.VideoWriter(config['output']['outtput_path'], cv2.VideoWriter_fourcc(*'mp4v'), config['output']['fps'], (weight, height))
-    for image in results:
-        video.write(image)
+    video = cv2.VideoWriter(config['output']['output_path'], cv2.VideoWriter_fourcc(*'mp4v'), config['output']['fps'], (weight, height))
+
+    for i in range(len(results)):
+        video.write(results[i]['mask'])
 
     cv2.destroyAllWindows()
     video.release()
     print("Video saved at", config['output']['output_path'])
     
-
 def main():
     config = yaml.safe_load(open("config.yaml"))
-    semantic_segmentation = pipeline("image-segmentation", "briaai/RMBG-2.0")
+    output_dir = os.path.dirname(config['output']['output_path'])
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    video_name = os.path.basename(config['video_path'])
+    config['output']['output_path'] = os.path.join(output_dir, video_name)
+
+    # as of now, only "nvidia/segformer-b1-finetuned-cityscapes-1024-1024" is supported for this usage
+    semantic_segmentation = pipeline("image-segmentation", config['model'])
     frames, etc = get(config["video_path"])
     frames = preprocess(frames, etc['fps'], config['output']['fps'])
-    segments = segment(frames, semantic_segmentation)
+    with torch.no_grad():
+        segments = segment(frames, semantic_segmentation)
     connect_save(segments, config, etc['width'], etc['height'])
 
 if __name__ == "__main__":

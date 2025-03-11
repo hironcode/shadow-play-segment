@@ -1,6 +1,8 @@
 
+# model: "briaai/RMBG-2.0"
+model: "nvidia/segformer-b1-finetuned-cityscapes-1024-1024"
 input:
-  video_path: "path/to/video.mp4"
+  video_path: "videos/raw/dice.mp4"
 output:
-  output_path: "path/to/output.mp4"
+  output_dir: "videos/seg/"
   fps: 2
